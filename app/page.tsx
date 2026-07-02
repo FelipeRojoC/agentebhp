@@ -418,14 +418,14 @@ export default function Home() {
                     renderBotContent(m)
                   )}
 
-                  {/* Descarga estricta por flag tipo "evaluacion" */}
+                  {/* CORRECCIÓN: Se envían exactamente los 3 argumentos definidos en tu archivo de PDF */}
                   {m.role === "assistant" && m.tipo === "evaluacion" && (
                     <div className="mt-4 pt-3 border-t border-slate-700/40 flex justify-end">
                       <button
                         onClick={() => {
                           const idx = messages.findIndex(msg => msg.id === m.id);
                           const userPrompt = idx > 0 ? messages[idx - 1].content : "Actividad General";
-                          generarChecklistPDF(userPrompt, m.content, userName, userRole);
+                          generarChecklistPDF(userPrompt, m.content, userName);
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl text-white font-bold tracking-wide text-xs uppercase flex items-center gap-2 transition shadow-md"
                       >
