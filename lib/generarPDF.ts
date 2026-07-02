@@ -13,7 +13,8 @@ export function generarChecklistPDF(actividad: string, contenidoBot: string, sup
   // Logo tipográfico institucional
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  doc.textColor = [11, 19, 43];
+  // CORRECCIÓN: Se usa el método setTextColor en lugar de la asignación directa
+  doc.setTextColor(11, 19, 43);
   doc.text("BHP", 14, 25);
 
   // Subtítulo técnico del formulario
@@ -149,18 +150,19 @@ function dibujarBloqueFirmas(doc: jsPDF, y: number, supervisor: string) {
   doc.line(20, y, 85, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.textColor = [100, 100, 100];
+  // CORRECCIÓN: Se reemplaza la asignación directa por setTextColor con valores numéricos individuales
+  doc.setTextColor(100, 100, 100);
   doc.text("Firma Supervisor Operacional", 22, y + 5);
   doc.setFont("helvetica", "bold");
-  doc.textColor = [11, 19, 43];
+  doc.setTextColor(11, 19, 43);
   doc.text(supervisor || "Felipe Rojo", 22, y + 10);
 
   // Bloque de Firma 2: Líder / Asesor HSEC (Derecha)
   doc.line(125, y, 190, y);
   doc.setFont("helvetica", "normal");
-  doc.textColor = [100, 100, 100];
+  doc.setTextColor(100, 100, 100);
   doc.text("Firma Asesor / Líder HSEC", 127, y + 5);
   doc.setFont("helvetica", "bold");
-  doc.textColor = [11, 19, 43];
+  doc.setTextColor(11, 19, 43);
   doc.text("Validación Terreno BHP", 127, y + 10);
 }
