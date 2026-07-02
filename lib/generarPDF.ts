@@ -13,7 +13,6 @@ export function generarChecklistPDF(actividad: string, contenidoBot: string, sup
   // Logo tipográfico institucional
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  // CORRECCIÓN: Se usa el método setTextColor en lugar de la asignación directa
   doc.setTextColor(11, 19, 43);
   doc.text("BHP", 14, 25);
 
@@ -115,14 +114,15 @@ export function generarChecklistPDF(actividad: string, contenidoBot: string, sup
       fontSize: 9, 
       cellPadding: 4,
       valign: "middle",
-      overflow: "linebreak" // Forzamos el salto de línea automático en celdas largas para que no se corten
-    },
-    gridLineColor: [220, 220, 220]
+      overflow: "linebreak", // Forzamos el salto de línea automático en celdas largas para que no se corten
+      lineColor: [220, 220, 220] // CORRECCIÓN: Trasladado el color de la grilla aquí con la propiedad válida
+    }
   });
 
   // --- 4. CONTROL DINÁMICO DE POSICIÓN PARA LAS FIRMAS ---
-  // Capturamos el final real de la tabla generada por autotable
-  const finalY = (doc as any).lastAutoTable.finalY + 30;
+  // Capturamos el final real de la tabla generada por autotable usando optional chaining seguro para TS
+  const lastTable = (doc as any).lastAutoTable;
+  const finalY = lastTable && lastTable.finalY ? lastTable.finalY + 30 : 250;
 
   // Si las firmas quedan muy al límite de la página (abajo de los 240mm de alto),
   // se añade automáticamente otra página para que no se amontone nada.
@@ -150,7 +150,6 @@ function dibujarBloqueFirmas(doc: jsPDF, y: number, supervisor: string) {
   doc.line(20, y, 85, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  // CORRECCIÓN: Se reemplaza la asignación directa por setTextColor con valores numéricos individuales
   doc.setTextColor(100, 100, 100);
   doc.text("Firma Supervisor Operacional", 22, y + 5);
   doc.setFont("helvetica", "bold");
