@@ -1,176 +1,70 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { createClient } from "@supabase/supabase-js";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY!,
-});
+// Inicializamos el SDK oficial de Gemini
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
+    // Extraemos los datos que envía el frontend
+    const { message, userName, userRole } = await responseJson(request);
 
-    const mensaje = body.message?.trim() || "";
-
-    const mensajeLower = mensaje.toLowerCase();
-
-    // ===========================
-    // Detectar conversación normal
-    // ===========================
-
-    const saludos = [
-      "hola",
-      "hola!",
-      "buenas",
-      "buenos días",
-      "buenas tardes",
-      "buenas noches",
-      "como estas",
-      "cómo estás",
-      "que tal",
-      "qué tal",
-      "gracias",
-      "muchas gracias",
-      "adiós",
-      "chao",
-      "bye",
-      "hasta luego",
-    ];
-
-    const esConversacion = saludos.some((s) =>
-      mensajeLower.includes(s)
-    );
-
-    if (esConversacion) {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `
-Eres el Agente Inteligente HSEC de BHP.
-
-Si el usuario solamente conversa contigo responde de forma natural, cordial y breve.
-
-No hables de riesgos.
-
-No hagas análisis HSEC.
-
-Mensaje:
-
-${mensaje}
-`,
-      });
-
-      return NextResponse.json({
-        ok: true,
-        respuesta: response.text,
-      });
-    }
-
-    // ===========================
-    // Buscar riesgos históricos
-    // ===========================
-
-    const { data: riesgos, error } = await supabase
-      .from("matriz_riesgos")
-      .select("actividad, riesgo")
-      .ilike("actividad", `%${mensaje}%`)
-      .limit(5);
-
-    if (error) {
-      console.error("Error Supabase:", error);
-    }
-
-    // ===========================
-    // Prompt HSEC
-    // ===========================
-
+    // Prompt industrial estructurado con el contexto de BHP
     const prompt = `
-Eres un Supervisor Senior HSEC de BHP especializado en Controles Críticos.
+      Eres el Agente de Controles Críticos e Inteligencia Artificial de BHP[cite: 1].
+      Tu objetivo es evaluar riesgos operacionales en faena minera.
+      
+      Usuario en sesión:
+      - Nombre: ${userName || "Felipe Rojo"}
+      - Rol: ${userRole || "Supervisor de Terreno"}
+      
+      Actividad a evaluar:
+      "${message}"
+      
+      Por favor, entrega una evaluación detallada utilizando estrictamente la siguiente estructura en tu respuesta si detectas riesgos operacionales:
+      # Evaluación HSEC
+      ## Riesgos Materiales
+      (Lista de riesgos detectados con viñetas)
+      ## Controles Críticos
+      (Lista de controles materiales preventivos con viñetas)
+      ## EPP Obligatorio
+      (Lista de elementos de protección obligatorios)
+    `;
 
-DATOS DEL OPERADOR
-
-Nombre: ${body.userName}
-Cargo: ${body.userRole}
-
-ACTIVIDAD
-
-${mensaje}
-
-RIESGOS ENCONTRADOS EN LA MATRIZ HISTÓRICA
-
-${
-  riesgos && riesgos.length > 0
-    ? JSON.stringify(riesgos, null, 2)
-    : "No se encontraron actividades similares en la matriz."
-}
-
-INSTRUCCIONES
-
-Utiliza SIEMPRE los antecedentes encontrados.
-
-Si no existen antecedentes, utiliza tu conocimiento HSEC para complementar la respuesta.
-
-Responde EXACTAMENTE con el siguiente formato:
-
-# Evaluación HSEC
-
-## Actividad
-
-(resumen)
-
-## Riesgos Materiales
-
-- ...
-
-## Controles Críticos
-
-- ...
-
-## EPP Obligatorio
-
-- ...
-
-## ¿Requiere OVCC?
-
-Sí o No.
-Explica brevemente.
-
-## Nivel de Riesgo
-
-Bajo
-Medio
-Alto
-Crítico
-
-No inventes información innecesaria.
-No agregues introducciones largas.
-Sé ejecutivo y profesional.
-`;
-
+    // Llamado seguro a la API de Inteligencia Artificial
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
     });
 
+    const respuestaTexto = response.text || "";
+
+    // Determinamos el tipo de respuesta: si contiene la estructura HSEC, activamos los componentes de tabla y PDF
+    const esEvaluacion = respuestaTexto.includes("Riesgos Materiales") || respuestaTexto.includes("HSEC");
+
     return NextResponse.json({
       ok: true,
-      respuesta: response.text,
+      respuesta: respuestaTexto,
+      tipo: esEvaluacion ? "evaluacion" : "chat"
     });
-  } catch (error: any) {
-    console.error(error);
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error.message,
-      },
-      {
-        status: 500,
-      }
-    );
+  } catch (error: any) {
+    console.error("Error en el endpoint de asistencia HSEC:", error);
+    
+    // Mitigación del error 503 (Saturación / High Demand) o cualquier falla de red
+    return NextResponse.json({
+      ok: false,
+      respuesta: "El sistema de IA de Controles Críticos está experimentando una alta demanda temporal en sus servidores. Por favor, reintente evaluar la tarea en unos instantes.",
+      tipo: "chat"
+    }, { status: 200 }); // Retornamos 200 para que el cliente lo maneje como mensaje en el chat sin colgar la app
+  }
+}
+
+// Función auxiliar para parsear el body de forma segura
+async function responseJson(request: Request) {
+  try {
+    return await request.json();
+  } catch {
+    return {};
   }
 }
