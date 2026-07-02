@@ -1,17 +1,27 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
-// Inicializamos el SDK oficial de Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Forzamos al SDK a inicializarse usando tu variable de entorno local de forma estricta
+const apiKey = process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export async function POST(request: Request) {
+  // Si la llave está vacía o indefinida, enviamos una alerta controlada al frontend
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      respuesta: "Error de configuración: La variable GEMINI_API_KEY no se encuentra definida o cargada en el entorno local del servidor.",
+      tipo: "chat"
+    }, { status: 200 });
+  }
+
   try {
     // Extraemos los datos que envía el frontend
     const { message, userName, userRole } = await responseJson(request);
 
     // Prompt industrial estructurado con el contexto de BHP
     const prompt = `
-      Eres el Agente de Controles Críticos e Inteligencia Artificial de BHP[cite: 1].
+      Eres el Agente de Controles Críticos e Inteligencia Artificial de BHP.
       Tu objetivo es evaluar riesgos operacionales en faena minera.
       
       Usuario en sesión:
